@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>E-commerce Registration</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        text-align: center;
+      }
+      label {
+        display: block;
+        margin-bottom: 10px;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+      }
+      button {
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+      .message {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+      .botao-verificacao {
+        margin: auto;
+        display: flex;
+      }
+      #registroForm {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 20px;
+      }
+      .hidden {
+        display: none;
+      }
+      .qrcode {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+      }
+      .qrcode img {
+        width: 150px;
+        height: 150px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>E-commerce Registration</h1>
+      <form id="registroForm">
+        <label for="id">E-commerce ID:</label>
+        <input type="text" id="id" name="id" required />
+        <label for="siteUrl">Site URL:</label>
+        <input type="text" id="siteUrl" name="siteUrl" required />
+        <button type="submit">Verify</button>
+      </form>
+
+      <div id="verificacao" class="hidden">
+        <div class="qrcode">
+          <img id="qrcode" alt="QR Code" />
+        </div>
+        <button
+          id="abrirWallet"
+          class="botao-verificacao"
+          style="margin: 20px auto"
+        >
+          Decrypt Random Word
+        </button>
+
+        <label for="palavraDescriptografada">Enter Decrypted Word:</label>
+        <input
+          type="text"
+          id="palavraDescriptografada"
+          name="palavraDescriptografada"
+          required
+        />
+        <button id="confirmarRegistro" class="botao-verificacao">
+          Confirm Registration
+        </button>
+      </div>
+
+      <div id="message" class="message hidden"></div>
+    </div>
+
+    <script>
+      let idHashGlobal;
+      let walletUrl;
+
+      // Função para gerar o hash SHA-256 do id
+      async function gerarHash(data) {
+        const encoder = new TextEncoder();
+        const dataBuffer = encoder.encode(data);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray
+          .map(byte => byte.toString(16).padStart(2, "0"))
+          .join("");
+        return hashHex;
+      }
+
+      // Submissão do formulário de registro
+      document
+        .getElementById("registroForm")
+        .addEventListener("submit", async function (event) {
+          event.preventDefault();
+          const id = document.getElementById("id").value;
+          const siteUrl = document.getElementById("siteUrl").value;
+
+          // Gera o hash SHA-256 do id
+          const idHash = await gerarHash(id);
+
+          // Enviar requisição para o endpoint PRCHAIN /api/prchain/register
+          fetch("/api/prchain/register", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id, siteUrl }),
+          })
+            .then(response => response.json())
+            .then(data => {
+              const messageDiv = document.getElementById("message");
+
+              if (data.encryptedword) {
+                // Guarda o hash e a URL da Wallet para usar depois
+                idHashGlobal = idHash;
+                walletUrl = data.walletUrl;
+
+                messageDiv.innerHTML = `<p>Encrypted word received. Please decrypt it and enter below.</p>`;
+                messageDiv.classList.remove("hidden");
+                document
+                  .getElementById("verificacao")
+                  .classList.remove("hidden");
+
+                // Atualiza o QR Code com a URL da Wallet
+                document.getElementById(
+                  "qrcode"
+                ).src = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(
+                  walletUrl
+                )}&size=150x150`;
+              } else {
+                messageDiv.innerHTML = `<p>${data.message}</p>`;
+                messageDiv.classList.remove("hidden");
+              }
+            })
+            .catch(error => {
+              console.error("Error:", error);
+              const messageDiv = document.getElementById("message");
+              messageDiv.innerHTML = `<p>Error processing registration. Check console for details.</p>`;
+              messageDiv.classList.remove("hidden");
+            });
+        });
+
+      // Confirmação de Registro (Verificar a palavra descriptografada)
+      document
+        .getElementById("confirmarRegistro")
+        .addEventListener("click", function () {
+          const randomWord = document.getElementById(
+            "palavraDescriptografada"
+          ).value;
+          const siteUrl = document.getElementById("siteUrl").value;
+
+          fetch("/api/prchain/confirm-registration", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              idHash: idHashGlobal,
+              randomWord,
+              siteUrl, // Enviando os parâmetros aqui
+            }),
+          })
+            .then(response => response.json())
+            .then(data => {
+              const messageDiv = document.getElementById("message");
+
+              if (data.ecommercdidrmb) {
+                messageDiv.innerHTML = `<p>${data.message}</p>`;
+              } else {
+                messageDiv.innerHTML = `<p>${data.message}</p>`;
+              }
+              messageDiv.classList.remove("hidden");
+            })
+            .catch(error => {
+              console.error("Error:", error);
+              const messageDiv = document.getElementById("message");
+              messageDiv.innerHTML = `<p>Error confirming registration. Check console for details.</p>`;
+              messageDiv.classList.remove("hidden");
+            });
+        });
+
+      // Abrir a Wallet para descriptografar a palavra
+      document
+        .getElementById("abrirWallet")
+        .addEventListener("click", function () {
+          window.open(walletUrl, "_blank");
+        });
+    </script>
+  </body>
+</html>

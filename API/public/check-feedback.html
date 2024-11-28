@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verify Feedback</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        padding: 0;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .feedback {
+        margin: 20px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #f9f9f9;
+      }
+
+      .feedback p {
+        margin: 0;
+        font-size: 12px;
+      }
+
+      .correct {
+        color: green;
+      }
+
+      .incorrect {
+        color: red;
+      }
+
+      .icon {
+        font-size: 24px;
+        margin-left: 10px;
+      }
+
+      /* Icons - You can use a custom icon set or a Unicode check/cross */
+      .icon-correct::before {
+        content: "✔"; /* Checkmark icon */
+      }
+
+      .icon-incorrect::before {
+        content: "✖"; /* Cross icon */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Verify Reputation Data</h1>
+
+      <!-- Textarea for pasting JSON -->
+      <textarea
+        id="jsonData"
+        placeholder="Paste your JSON here"
+        rows="10"
+        cols="50"
+      ></textarea>
+
+      <!-- Input for uploading JSON file -->
+      <input type="file" id="jsonFile" accept=".json" />
+
+      <!-- Button to verify feedbacks -->
+      <button
+        style="
+          background: #007bff;
+          padding: 10px 15px;
+          color: white;
+          border: none;
+        "
+        onclick="verifyFeedback()"
+      >
+        Verify Feedback
+      </button>
+
+      <!-- Explanation -->
+      <p>
+        You can either paste your JSON data into the textbox or upload a JSON
+        file.
+      </p>
+
+      <!-- Result display -->
+      <div id="result"></div>
+    </div>
+
+    <script>
+      // Function to read the selected JSON file
+      document.getElementById("jsonFile").addEventListener("change", function (event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+          document.getElementById("jsonData").value = event.target.result;
+        };
+
+        reader.readAsText(file);
+      });
+
+      // Function to verify the feedback
+      async function verifyFeedback() {
+        const jsonData = document.getElementById("jsonData").value;
+
+        if (!jsonData) {
+          alert("Please provide JSON data.");
+          return;
+        }
+
+        try {
+          // Parse the JSON
+          const parsedJson = JSON.parse(jsonData);
+
+          // Send the JSON to the verification endpoint
+          const response = await fetch("/api/check-feedback", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(parsedJson),
+          });
+
+          const result = await response.json();
+          displayResult(result);
+        } catch (error) {
+          console.error("Error verifying feedback:", error);
+          alert("Invalid JSON format or error occurred while verifying feedback.");
+        }
+      }
+
+      // Function to display the verification result
+      function displayResult(data) {
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = ""; // Clear previous content
+
+        if (data.message) {
+          const statusClass = data.message.includes("tampered")
+            ? "incorrect"
+            : "correct";
+          const iconClass = data.message.includes("tampered")
+            ? "icon-incorrect"
+            : "icon-correct";
+
+          resultDiv.innerHTML += `
+            <div class="feedback">
+              <p>${data.message}</p>
+              <span class="icon ${iconClass} ${statusClass}"></span>
+            </div>
+          `;
+
+          if (data.currentFeedbackHash && data.payloadDecrypted) {
+            resultDiv.innerHTML += `
+              <div class="feedback">
+                <p>Current Feedback Hash: <strong>${data.currentFeedbackHash}</strong></p>
+              </div>
+               <div class="feedback">
+                <p>Stored Feedback Hash: <strong>${data.payloadDecrypted}</strong></p>
+              </div>
+            `;
+          }
+        } else {
+          resultDiv.innerHTML = '<p class="incorrect">No response received from the server.</p>';
+        }
+      }
+    </script>
+  </body>
+</html>
