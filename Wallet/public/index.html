@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Criar Wallet</title>
+  </head>
+  <body>
+    <h1>Criar Wallet</h1>
+    <form id="createWalletForm">
+      <label for="eid">EID:</label>
+      <input type="text" id="eid" name="eid" required />
+      <button type="submit">Criar Wallet</button>
+    </form>
+
+    <script>
+      document
+        .getElementById("createWalletForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          const eid = document.getElementById("eid").value;
+
+          fetch(`/wallet/inicializar/${eid}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          })
+            .then(response => response.json())
+            .then(data => {
+              alert(data.message);
+            })
+            .catch(error => {
+              console.error("Erro:", error);
+            });
+        });
+    </script>
+  </body>
+</html>

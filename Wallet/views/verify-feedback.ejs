@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Feedback Verification</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        background-color: #f4f4f9;
+        color: #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .container {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        max-width: 600px;
+        width: 100%;
+      }
+
+      h1 {
+        color: #007bff;
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 24px;
+      }
+
+      p {
+        margin-bottom: 10px;
+        font-size: 16px;
+        color: #555;
+      }
+
+      h2 {
+        color: #007bff;
+        margin-bottom: 10px;
+        font-size: 18px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+
+      table th,
+      table td {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        text-align: left;
+      }
+
+      table th {
+        background-color: #007bff;
+        color: white;
+      }
+
+      form {
+        text-align: center;
+      }
+
+      button {
+        background-color: #007bff;
+        color: #fff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      /* Estilo para o result da verificação */
+      .result-message {
+        margin-top: 20px;
+        font-size: 16px;
+        color: #007bff;
+      }
+
+      .result-message.error {
+        color: red;
+      }
+
+      .result-message.success {
+        color: green;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Feedback Verification</h1>
+      <p><strong>ID:</strong> <%= feedback.id %></p>
+      <p><strong>Rater :</strong> <%= feedback.rater %></p>
+      <p><strong>Subject:</strong> <%= feedback.subject %></p>
+      <p><strong>Platform: </strong> <%= feedback.platform %></p>
+      <p><strong>Url: </strong> <%= refererUrl %></p>
+
+      <h2>Feedback details currently:</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% Object.keys(feedback.feedback).forEach(function(key) { %>
+          <tr>
+            <td><%= key %></td>
+            <td><%= feedback.feedback[key] %></td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+
+      <form id="verifyFeedbackForm" onsubmit="return verifyFeedback(event)">
+        <input type="hidden" name="id" value="<%= feedback.id %>" />
+        <input type="hidden" name="rater" value="<%= feedback.rater %>" />
+        <input type="hidden" name="subject" value="<%= feedback.subject %>" />
+        <input type="hidden" name="order" value="<%= feedback.order %>" />
+        <input type="hidden" name="platform" value="<%= feedback.platform %>" />
+        <input
+          type="hidden"
+          name="feedback"
+          value="<%= JSON.stringify(feedback) %>"
+        />
+
+        <button type="submit">Verify Feedback</button>
+      </form>
+
+      <div id="result" class="result-message"></div>
+    </div>
+
+    <script>
+      async function verifyFeedback(event) {
+        event.preventDefault();
+
+        const form = document.getElementById("verifyFeedbackForm");
+        const formData = new FormData(form);
+
+        const jsonData = {};
+        formData.forEach((value, key) => {
+          jsonData[key] = value;
+        });
+
+        try {
+          const response = await fetch("/wallet/verify-feedback", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(jsonData),
+          });
+
+          const result = await response.json();
+          const resultDiv = document.getElementById("result");
+
+          if (result.message) {
+            resultDiv.innerHTML = `<p>${result.message}</p>`;
+            resultDiv.classList.add(
+              result.message.includes("tampered") ? "error" : "success"
+            );
+          } else {
+            resultDiv.innerHTML = `<p>Error checking feedback.</p>`;
+          }
+        } catch (error) {
+          console.error("Error checking feedback.:", error);
+          const resultDiv = document.getElementById("result");
+          resultDiv.innerHTML = `<p>Error checking feedback.</p>`;
+          resultDiv.classList.add("error");
+        }
+      }
+    </script>
+  </body>
+</html>

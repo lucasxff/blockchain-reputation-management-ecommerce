@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirm and Sign Feedback</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        background-color: #f4f4f9;
+        color: #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .container {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        max-width: 600px;
+        width: 100%;
+      }
+
+      h1 {
+        color: #007bff;
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 24px;
+      }
+
+      p {
+        margin-bottom: 10px;
+        font-size: 16px;
+        color: #555;
+      }
+
+      h2 {
+        color: #007bff;
+        margin-bottom: 10px;
+        font-size: 18px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+
+      table th,
+      table td {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        text-align: left;
+      }
+
+      table th {
+        background-color: #007bff;
+        color: white;
+      }
+
+      form {
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      button {
+        background-color: #007bff;
+        color: #fff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin: 0 10px;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      button.reject {
+        background-color: #ff4d4f;
+      }
+
+      button.reject:hover {
+        background-color: #d9363e;
+      }
+
+      .message {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 5px;
+        display: none;
+      }
+
+      .message.success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .message.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Confirm and Sign Feedback</h1>
+      <p><strong>ID:</strong> <%= id %></p>
+      <p><strong>Rater DID:</strong> <%= rater %></p>
+      <p><strong>Subject DID:</strong> <%= subject %></p>
+      <p><strong>Platform DID:</strong> <%= platform %></p>
+      <p><strong>E-commerce URL:</strong> <%= context %></p>
+
+      <h2>Feedback Details:</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% Object.keys(feedback).forEach(function(key) { %>
+          <tr>
+            <td><%= key %></td>
+            <td><%= feedback[key] %></td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+
+      <!-- Message container -->
+      <div id="message" class="message"></div>
+
+      <!-- Form for confirming the signature -->
+      <form
+        id="feedbackForm"
+        action="/wallet/<%= idHash %>/confirm"
+        method="POST"
+      >
+        <input type="hidden" name="id" value="<%= id %>" />
+        <input type="hidden" name="rater" value="<%= rater %>" />
+        <input type="hidden" name="subject" value="<%= subject %>" />
+        <input type="hidden" name="order" value="<%= order %>" />
+        <input type="hidden" name="platform" value="<%= platform %>" />
+        <input type="hidden" name="context" value="<%= context %>" />
+        <input
+          type="hidden"
+          name="feedback"
+          value="<%= JSON.stringify(feedback) %>"
+        />
+
+        <!-- Confirm and Sign button -->
+        <button type="submit" name="confirm" value="true">
+          Confirm and Sign
+        </button>
+
+        <!-- Reject button -->
+        <button
+          type="button"
+          class="reject"
+          name="confirm"
+          value="false"
+          onclick="submitForm(false)"
+        >
+          Reject
+        </button>
+      </form>
+    </div>
+
+    <script>
+      // Submit form logic
+      document
+        .getElementById("feedbackForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          submitForm(true); // "Confirm and Sign" action
+        });
+
+      // Function to submit the form data
+      function submitForm(isConfirmed) {
+        const form = document.getElementById("feedbackForm");
+
+        // Manually create a JSON object from form inputs
+        const formData = {
+          id: form.querySelector('input[name="id"]').value,
+          rater: form.querySelector('input[name="rater"]').value,
+          subject: form.querySelector('input[name="subject"]').value,
+          order: form.querySelector('input[name="order"]').value,
+          platform: form.querySelector('input[name="platform"]').value,
+          context: form.querySelector('input[name="context"]').value,
+          feedback: JSON.parse(
+            form.querySelector('input[name="feedback"]').value
+          ),
+          confirm: isConfirmed ? "true" : "false",
+        };
+
+        fetch(form.action, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json", // Set content type to JSON
+          },
+          body: JSON.stringify(formData), // Convert the formData object to a JSON string
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`Error: ${response.statusText}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            const messageDiv = document.getElementById("message");
+            messageDiv.style.display = "block";
+
+            if (data.message) {
+              messageDiv.textContent = data.message;
+              if (isConfirmed) {
+                messageDiv.className = "message success";
+              } else {
+                messageDiv.className = "message error";
+              }
+            }
+          })
+          .catch(error => {
+            const messageDiv = document.getElementById("message");
+            messageDiv.style.display = "block";
+            messageDiv.textContent =
+              "An error occurred while submitting feedback.";
+            messageDiv.className = "message error";
+            console.error("Error:", error);
+          });
+      }
+    </script>
+  </body>
+</html>
