@@ -7,7 +7,7 @@ This repository contains the development of a blockchain-based solution for mana
 Before starting, ensure the following are installed and configured:
 
 - Node.js (latest version to run the API).
-- WordPress with WooCommerce (latest version).
+- WordPress with WooCommerce (Min Version 9.1.4).
 - PHP with OpenSSL enabled (default in most PHP installations).
 
 # Setup Instructions
